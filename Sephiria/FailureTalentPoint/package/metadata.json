@@ -1,0 +1,7 @@
+{
+  "modName": "Failure Talent Point",
+  "modVersion": "1.0.0",
+  "modAuthor": "Local mod",
+  "dllFile": "FailureTalentPoint.dll",
+  "entryClass": "SephiriaMods.FailureTalentPoint.FailureTalentPointMod"
+}

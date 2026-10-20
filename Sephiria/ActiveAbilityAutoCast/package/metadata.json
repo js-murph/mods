@@ -1,0 +1,7 @@
+{
+  "modName": "Active Ability & Grimoire Auto-Cast",
+  "modVersion": "1.2.0",
+  "modAuthor": "Local mod",
+  "dllFile": "ActiveAbilityAutoCast.dll",
+  "entryClass": "SephiriaMods.ActiveAbilityAutoCast.ActiveAbilityAutoCastMod"
+}
