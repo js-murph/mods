@@ -3,6 +3,11 @@
 A collection of game mods we vibe code: small experiments, quality-of-life
 improvements, and other things that make our games more fun.
 
+## Mods
+
+- **Gloomhaven Digital:** [Party AI](Gloomhaven/GloomhavenPartyAI/) — offline
+  automation for your party's mercenaries.
+
 ## Layout
 
 The root stays simple: this README and one directory per game. Each mod lives in
@@ -20,8 +25,7 @@ mods/
         └── ...
 ```
 
-Game and mod directories are added as mods are published; the names above are
-examples, not bundled mods.
+The names above illustrate the layout; available mods are linked above.
 
 ## Adding a mod
 
