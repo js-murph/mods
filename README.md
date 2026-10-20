@@ -5,8 +5,16 @@ improvements, and other things for my own amusement.
 
 ## Mods
 
+- **Fell & Sell:** [Auto Collect](Fell%20%26%20Sell/FellAndSellAutoCollect/) and
+  [Auto Restock](Fell%20%26%20Sell/FellAndSellAutoRestock/) — automate register
+  collection and display restocking.
 - **Gloomhaven Digital:** [Party AI](Gloomhaven/GloomhavenPartyAI/) — offline
   automation for your party's mercenaries.
+- **Sephiria:** [Auto-Cast](Sephiria/ActiveAbilityAutoCast/) and
+  [Failure Talent Point](Sephiria/FailureTalentPoint/) — toggle automatic abilities
+  and earn a bonus Talent point after failed solo runs.
+- **Tangy TD:** [Save Editor](Tangy%20TD/SaveEditor/) — a React component for
+  editing levels and skill points.
 
 ## Layout
 
