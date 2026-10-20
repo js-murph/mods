@@ -48,7 +48,7 @@ These mods are maintained on a best effort basis and may be out of date for curr
 
 ## License
 
-[MIT with Commons Clause v1.0](LICENSE), not plain MIT. Use (including business
+[MIT with Commons Clause v1.0](LICENSE). Use (including business
 use), modification, and free redistribution are permitted under those terms.
 Selling the software, or a product or service whose value derives entirely or
 substantially from it, requires separate permission. To request permission,
