@@ -18,3 +18,8 @@ default export, `TangyTDSaveEditor`.
 The component reads and downloads files locally; it contains no upload code.
 It preserves unedited bytes, so it does **not** anonymize save files.
 Compatibility with current game versions is unverified. Never commit your saves.
+
+## License
+
+[MIT with Commons Clause v1.0](../../LICENSE), like the other original code in
+this repository. This is the save editor's code, not Tangy TD game source.

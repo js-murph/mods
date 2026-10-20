@@ -18,12 +18,16 @@ improvements, and other things for my own amusement.
 
 ## Layout
 
-The root stays simple: this README and one directory per game. Each mod lives in
-its own folder inside its game's directory:
+The root contains this README, the license, agent guidance (`AGENTS.md` and
+`.agents/skills/`), and one directory per game. Each mod lives in its own folder
+inside its game's directory:
 
 ```text
 mods/
 ├── README.md
+├── LICENSE
+├── AGENTS.md
+├── .agents/skills/
 └── Game Name/
     ├── ModName/
     │   ├── README.md
@@ -41,3 +45,16 @@ mods/
 Instructions for installation will be included in the mod Readme.
 
 These mods are maintained on a best effort basis and may be out of date for current versions of games.
+
+## License
+
+[MIT with Commons Clause v1.0](LICENSE), not plain MIT. Use (including business
+use), modification, and free redistribution are permitted under those terms.
+Selling the software, or a product or service whose value derives entirely or
+substantially from it, requires separate permission. To request permission,
+[open an issue](https://github.com/js-murph/mods/issues); a request alone grants
+no additional rights.
+
+Provided as-is, without warranty; the license includes a liability disclaimer,
+subject to applicable law. This is source-available software, not OSI open source.
+Third-party rights are unchanged.
