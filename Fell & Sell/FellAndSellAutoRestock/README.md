@@ -1,8 +1,9 @@
 # Fell & Sell — Auto Restock Tables
 
-Restocks shop displays from matching items in your main backpack, retaining the
-selected item and base price. Does not create or buy stock; upgraded items and
-items containing other inventory are excluded.
+Restocks shop displays from matching items in your main backpack first, then
+storage chests in the same loaded scene, retaining the selected item and base
+price. Does not create or buy stock; upgraded items and items containing other
+inventory are excluded. Dungeon loot chests and packed-up chests are not used.
 
 Built against Fell & Sell 1.8.0 / Unity 6000.3.10f1 and MelonLoader 0.7.3.
 **In-game restocking and save persistence remain unverified. Back up your saves.**
@@ -30,9 +31,14 @@ within interaction range:
 - **F7:** restock only at Normal or High demand.
 - Press the active mode's key again to turn it off. All slots start off.
 
-The interaction text shows the current mode. Controls are keyboard-only. Empty
-backpacks wait for stock; loading, paused gameplay, and inventory interactions
-pause restocking. Replacing a display item changes its restock target.
+The contextual action menu shows separate **F6** and **F7** rows with **ON/OFF**
+status; the enabled mode is highlighted. ON means the mode is enabled, not that
+stock is currently available. Empty unconfigured displays say **Place an item
+first**. Controls are keyboard-only and require interaction hints to be enabled.
+Both modes use chests automatically, with no distance limit within the scene.
+Restocking waits when neither source has stock, and pauses during loading,
+paused gameplay, inventory/chest interactions, or furniture placement. Replacing
+a display item changes its restock target.
 
 ## Saves and removal
 
@@ -43,5 +49,6 @@ requires configuring it again.
 To uninstall, close the game and remove `Mods/FellAndSell.AutoRestock.dll`.
 Unused mod save data can remain; do not hand-edit your save to remove it.
 
-If the interaction text says `Stopped`, check `MelonLoader/Latest.log` under
-`Auto_Restock_Tables` before trying again.
+If the menu says `Stopped`, check `MelonLoader/Latest.log` under
+`Auto_Restock_Tables` before trying again. The updated menu layout has not yet
+been checked in-game.

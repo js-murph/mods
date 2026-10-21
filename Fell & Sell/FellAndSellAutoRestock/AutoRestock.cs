@@ -29,7 +29,7 @@ public sealed class AutoRestock : MelonMod
     public override void OnInitializeMelon()
     {
         Instance = this;
-        LoggerInstance.Msg("Ready. Look at a stocked table: F6 toggles Always, F7 toggles Demand only (Normal/High). Stock comes from your backpack.");
+        LoggerInstance.Msg("Ready. Look at a stocked table: F6 toggles Always, F7 toggles Demand only (Normal/High). Stock comes from your backpack, then storage chests in the same scene.");
     }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName) => player = null;
@@ -62,9 +62,13 @@ public sealed class AutoRestock : MelonMod
             // Leave stock alone while a UI may hold a source slot for a manual transfer.
             if ((PlayerInputHandler.Instance != null && PlayerInputHandler.Instance.IsPlayerActionBlocked()) ||
                 shelfManager.IsShelfModeActive ||
+                (ChestStorageUI.Instance != null && ChestStorageUI.Instance.IsChestModeActive) ||
                 (FurniturePlacementManager.Instance != null && FurniturePlacementManager.Instance.IsPlacing))
                 return;
 
+            // Discover once per pass so newly placed chests work without caching destroyed furniture.
+            var chests = tables.Count == 0 ? Array.Empty<ChestStorage>() :
+                UnityEngine.Object.FindObjectsOfType<ChestStorage>().ToArray();
             foreach (var pair in tables.ToArray())
             {
                 var table = pair.Value;
@@ -76,7 +80,7 @@ public sealed class AutoRestock : MelonMod
                 if (!table.Slot.isActiveAndEnabled)
                     continue;
                 CaptureItem(table);
-                Restock(table, inventory, shop, shelfManager);
+                Restock(table, inventory, shop, shelfManager, chests);
             }
         }
         catch (Exception error)
@@ -86,18 +90,30 @@ public sealed class AutoRestock : MelonMod
         }
     }
 
-    private void HandleHotkey(RestockMode requested)
+    private ShelfSlot GetTargetSlot()
     {
+        var saves = SaveManager.Instance;
+        if (Time.timeScale <= 0 || saves == null || saves.IsSaving ||
+            saves.isRestoringFromSave || saves.isRestoringSceneState)
+            return null;
         var input = PlayerInputHandler.Instance;
         if (input == null || input.IsPlayerActionBlocked())
-            return;
+            return null;
         if (player == null)
             player = UnityEngine.Object.FindObjectOfType<PlayerInteraction>();
+        if (player == null || !player.isActiveAndEnabled)
+            return null;
         var interactable = player?.currentInteractable;
         if (interactable == null)
-            return;
+            return null;
         var slot = interactable.TryCast<ShelfSlot>() ?? SingleSlot(interactable.TryCast<ItemPickup>());
-        if (slot == null || !slot.isActiveAndEnabled)
+        return slot != null && slot.isActiveAndEnabled ? slot : null;
+    }
+
+    private void HandleHotkey(RestockMode requested)
+    {
+        var slot = GetTargetSlot();
+        if (slot == null)
             return;
 
         int id = slot.GetInstanceID();
@@ -117,7 +133,9 @@ public sealed class AutoRestock : MelonMod
             CaptureItem(table);
             tables.Add(id, table);
         }
-        player.UpdateUI(true, interactable, true);
+        var hints = ContextualActionHintsUI.Instance;
+        if (hints != null)
+            hints.RefreshHints();
         LoggerInstance.Msg($"Table restock: {(tables.TryGetValue(id, out table) ? table.Rule.Mode : RestockMode.Off)}");
     }
 
@@ -140,7 +158,8 @@ public sealed class AutoRestock : MelonMod
         }
     }
 
-    private static void Restock(Table table, InventoryManager inventory, ShopManager shop, ShelfManager shelfManager)
+    private static void Restock(Table table, InventoryManager inventory, ShopManager shop,
+        ShelfManager shelfManager, ChestStorage[] chests)
     {
         var slot = table.Slot;
         var rule = table.Rule;
@@ -159,19 +178,55 @@ public sealed class AutoRestock : MelonMod
         if (slot.quantity >= capacity)
             return;
 
+        RestockFrom(table, item, capacity, inventory);
+        foreach (var chest in chests)
+        {
+            if (slot.quantity >= capacity)
+                break;
+            if (chest == null || !chest.isActiveAndEnabled || chest.isOpened ||
+                chest.gameObject.scene != slot.gameObject.scene)
+                continue;
+            var pickup = chest.GetComponentInParent<ItemPickup>();
+            if (pickup != null && (pickup.isFurnitureScroll || pickup.IsBeingPickedUp || pickup.HasBeenCollected))
+                continue;
+            RestockFrom(table, item, capacity, inventory, chest);
+        }
+    }
+
+    private static void RestockFrom(Table table, ItemData item, int capacity,
+        InventoryManager inventory, ChestStorage chest = null)
+    {
+        var slot = table.Slot;
+        var slots = chest == null ? inventory.inventorySlots : chest.inventory;
+        if (slots == null)
+            return;
+
+        void RemoveStock(InventorySlot source, int amount)
+        {
+            if (chest == null)
+                inventory.RemoveItemAmount(source, amount);
+            else
+            {
+                // Chests have fixed slots: native chest transfers clear, rather than remove, empty slots.
+                source.quantity -= amount;
+                if (source.quantity <= 0)
+                    source.Clear();
+            }
+        }
+
         // Inventory callbacks may remove/reorder slots, so iterate a managed snapshot.
-        var sources = new InventorySlot[inventory.inventorySlots.Count];
+        var sources = new InventorySlot[slots.Count];
         for (int i = 0; i < sources.Length; i++)
-            sources[i] = inventory.inventorySlots[i];
+            sources[i] = slots[i];
         foreach (var source in sources)
         {
             if (slot.quantity >= capacity)
                 break;
-            if (source == null || !inventory.inventorySlots.Contains(source))
+            if (source == null || !slots.Contains(source))
                 continue;
             source.EnsureItemResolved();
             if (source.item != item || source.quantity <= 0 || source.isEquipped || source.upgradeLevel != 0 ||
-                inventory.IsEquipmentSlot(source) || inventory.IsQuickSlot(source) ||
+                (chest == null && (inventory.IsEquipmentSlot(source) || inventory.IsQuickSlot(source))) ||
                 (source.storedItems != null && source.storedItems.Count > 0))
                 continue;
 
@@ -182,7 +237,7 @@ public sealed class AutoRestock : MelonMod
             {
                 // The native return value is the accepted count, not the unplaced remainder.
                 // Pass the unmodified base price so demand/furniture bonuses are applied once.
-                accepted = slot.PlaceItem(item, amount, rule.BasePrice, false);
+                accepted = slot.PlaceItem(item, amount, table.Rule.BasePrice, false);
             }
             catch
             {
@@ -190,24 +245,34 @@ public sealed class AutoRestock : MelonMod
                 // if animation/UI throws, then let the outer handler stop the session.
                 int placed = Math.Clamp(slot.quantity - before, 0, amount);
                 if (slot.currentItem == item && placed > 0)
-                    inventory.RemoveItemAmount(source, placed);
+                    RemoveStock(source, placed);
                 throw;
             }
             if (accepted > 0)
-                inventory.RemoveItemAmount(source, accepted);
+                RemoveStock(source, accepted);
         }
     }
 
-    private void Describe(ShelfSlot slot, ref string text)
+    private void AddContextHints(Il2CppSystem.Collections.Generic.List<ContextualActionHintsUI.HintData> list)
     {
+        var slot = GetTargetSlot();
         if (slot == null)
             return;
-        string mode = "Off";
-        if (tables.TryGetValue(slot.GetInstanceID(), out var table))
-            mode = table.Rule.Mode == RestockMode.Always ? "Always" : "Demand only (Normal/High)";
-        if (faulted)
-            mode = "Stopped (see MelonLoader log)";
-        text += $"\n<size=75%>Restock: {mode}\nF6 Always / F7 Demand (press again: Off)</size>";
+        bool configured = tables.TryGetValue(slot.GetInstanceID(), out var table);
+        var mode = configured ? table.Rule.Mode : RestockMode.Off;
+        bool canEnable = configured || (slot.currentItem != null && slot.quantity > 0 && slot.basePrice > 0);
+        string unavailable = faulted ? "Stopped (see log)" : !canEnable ? "Place an item first" : null;
+
+        // Native hint rows supply the key badge, layout, and active-state styling.
+        // Rebuild from the current target each refresh so another table cannot inherit its status.
+        list.Add(new ContextualActionHintsUI.HintData(
+            "FellAndSell.AutoRestock.Always", "F6", "Always restock",
+            unavailable ?? (mode == RestockMode.Always ? "ON" : "OFF"),
+            highlight: !faulted && mode == RestockMode.Always));
+        list.Add(new ContextualActionHintsUI.HintData(
+            "FellAndSell.AutoRestock.DemandOnly", "F7", "Restock (Normal/High demand)",
+            unavailable ?? (mode == RestockMode.DemandOnly ? "ON" : "OFF"),
+            highlight: !faulted && mode == RestockMode.DemandOnly));
     }
 
     private void SaveRules(string file)
@@ -278,25 +343,14 @@ public sealed class AutoRestock : MelonMod
         }
     }
 
-    [HarmonyPatch(typeof(ShelfSlot), nameof(ShelfSlot.GetObjectText))]
-    private static class SlotLabel
+    [HarmonyPatch(typeof(ContextualActionHintsUI), nameof(ContextualActionHintsUI.CollectInteractionHint))]
+    private static class ContextMenuHints
     {
-        private static void Postfix(ShelfSlot __instance, ref string __result)
+        private static void Postfix(ContextualActionHintsUI __instance,
+            Il2CppSystem.Collections.Generic.List<ContextualActionHintsUI.HintData> list)
         {
-            string text = __result;
-            Safely(() => Instance?.Describe(__instance, ref text));
-            __result = text;
-        }
-    }
-
-    [HarmonyPatch(typeof(ItemPickup), nameof(ItemPickup.GetObjectText))]
-    private static class TableLabel
-    {
-        private static void Postfix(ItemPickup __instance, ref string __result)
-        {
-            string text = __result;
-            Safely(() => Instance?.Describe(SingleSlot(__instance), ref text));
-            __result = text;
+            if (__instance._showInteractionHint)
+                Safely(() => Instance?.AddContextHints(list));
         }
     }
 
