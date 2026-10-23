@@ -5,9 +5,11 @@ improvements, and other things for my own amusement.
 
 ## Mods
 
-- **Fell & Sell:** [Auto Collect](Fell%20%26%20Sell/FellAndSellAutoCollect/) and
-  [Auto Restock](Fell%20%26%20Sell/FellAndSellAutoRestock/) — automate register
-  collection and display restocking.
+- **Fell & Sell:** [Auto Collect](Fell%20%26%20Sell/FellAndSellAutoCollect/),
+  [Keep Dungeon Loot](Fell%20%26%20Sell/FellAndSellKeepDungeonLoot/), and
+  [No Dungeon Weight Limit](Fell%20%26%20Sell/FellAndSellNoDungeonWeight/) — automate
+  register collection, retain loot after dungeon and forest
+  deaths, or remove the dungeon carrying weight limit.
 - **Gloomhaven Digital:** [Party AI](Gloomhaven/GloomhavenPartyAI/) — offline
   automation for your party's mercenaries.
 - **Sephiria:** [Auto-Cast](Sephiria/ActiveAbilityAutoCast/) and

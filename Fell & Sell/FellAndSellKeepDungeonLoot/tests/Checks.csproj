@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GameDir Condition="'$(GameDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/Fell &amp; Sell</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../KeepDungeonLoot.cs" />
+    <Reference Include="$(GameDir)/MelonLoader/net6/0Harmony.dll" />
+    <Reference Include="$(GameDir)/MelonLoader/net6/MonoMod*.dll" />
+    <Reference Include="$(GameDir)/MelonLoader/net6/Mono.Cecil*.dll" />
+    <Reference Include="$(GameDir)/MelonLoader/net6/Iced.dll" />
+  </ItemGroup>
+</Project>
