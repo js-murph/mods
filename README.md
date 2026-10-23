@@ -3,21 +3,6 @@
 A collection of game mods I vibe code: small experiments, quality-of-life
 improvements, and other things for my own amusement.
 
-## Mods
-
-- **Fell & Sell:** [Auto Collect](Fell%20%26%20Sell/FellAndSellAutoCollect/),
-  [Keep Dungeon Loot](Fell%20%26%20Sell/FellAndSellKeepDungeonLoot/), and
-  [No Dungeon Weight Limit](Fell%20%26%20Sell/FellAndSellNoDungeonWeight/) — automate
-  register collection, retain loot after dungeon and forest
-  deaths, or remove the dungeon carrying weight limit.
-- **Gloomhaven Digital:** [Party AI](Gloomhaven/GloomhavenPartyAI/) — offline
-  automation for your party's mercenaries.
-- **Sephiria:** [Auto-Cast](Sephiria/ActiveAbilityAutoCast/) and
-  [Failure Talent Point](Sephiria/FailureTalentPoint/) — toggle automatic abilities
-  and earn a bonus Talent point after failed solo runs.
-- **Tangy TD:** [Save Editor](Tangy%20TD/SaveEditor/) — a React component for
-  editing levels and skill points.
-
 ## Layout
 
 The root contains this README, the license, agent guidance (`AGENTS.md` and
