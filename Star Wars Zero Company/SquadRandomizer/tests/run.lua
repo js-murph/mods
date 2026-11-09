@@ -45,14 +45,14 @@ local function character(id, status)
 end
 
 local selectionState = "br.UI.Menu.Strategy.Holotable.Region.Location.TacticalMission.MissionBriefing.SquadSelect.Selection"
-local function fixture()
+local function fixture(requiredCount)
     local f = {logs = {}, queue = {}, state = selectionState}
     f.hero, f.a, f.b = character(1), character(2), character(3)
     f.characters = {f.hero, f.a, f.b, character(2), character(4, "dead"),
         character(5, "dismissed"), character(6, "critical"), character(7, "unavailable")}
     f.slots = {}
-    local function slot(current, allowed)
-        local value = object({AssignedCharacterVM = current, index = #f.slots * 3})
+    local function slot(current, allowed, index)
+        local value = object({AssignedCharacterVM = current, index = index})
         function value:GetSlotIndex() return self.index end
         function value:DoesCharacterSatisfyRequirement(candidate)
             return not allowed or allowed[candidate.id] == true
@@ -72,8 +72,15 @@ local function fixture()
         f.slots[#f.slots + 1] = value
         return value
     end
-    f.required = slot(f.hero, {[1] = true})
-    f.first, f.second = slot(f.a), slot(f.b)
+    -- Native InitSlots numbers flexible slots first, then required slots.
+    f.requiredSlots = {}
+    for i = 1, requiredCount or 1 do
+        local recruit = i == 1 and f.hero or character(10 + i)
+        if i > 1 then table.insert(f.characters, recruit) end
+        f.requiredSlots[i] = slot(recruit, {[recruit.id] = true}, 2 + i - 1)
+    end
+    f.required = f.requiredSlots[1]
+    f.first, f.second = slot(f.a, nil, 0), slot(f.b, nil, 1)
     f.screen = object({active = true, visible = true, enabled = true, isBuildOnComplete = true})
     function f.screen:IsActivated() return self.active end
     function f.screen:IsVisible() return self.visible end
@@ -104,9 +111,9 @@ local function fixture()
         f.buttons[#f.buttons + 1] = button
         return button
     end
-    local mission = object({RequiredSlotVMs = array({f.required}), FlexibleSlotVMs = array({f.first, f.second})})
-    local function displaySlot(native, required)
-        local value = object({Index = native.index, isRequired = required,
+    local mission = object({RequiredSlotVMs = array(f.requiredSlots), FlexibleSlotVMs = array({f.first, f.second})})
+    local function displaySlot(native, required, index)
+        local value = object({Index = index, isRequired = required,
             CharacterVM = native.AssignedCharacterVM, ActivityVM = mission})
         function value:SetCharacter(characterVM)
             if self.failOnce then self.failOnce = false; error("Simulated display failure") end
@@ -114,10 +121,15 @@ local function fixture()
         end
         return value
     end
-    f.requiredDisplay = displaySlot(f.required, true)
-    f.firstDisplay, f.secondDisplay = displaySlot(f.first, false), displaySlot(f.second, false)
-    -- The display's array order is not the native slot index.
-    f.displaySlots = {f.secondDisplay, f.requiredDisplay, f.firstDisplay}
+    -- Display indices restart at zero in each group, independent of array order.
+    f.firstDisplay, f.secondDisplay = displaySlot(f.first, false, 0), displaySlot(f.second, false, 1)
+    f.displaySlots = {f.secondDisplay, f.firstDisplay}
+    f.requiredDisplays = {}
+    for i, required in ipairs(f.requiredSlots) do
+        f.requiredDisplays[i] = displaySlot(required, true, i - 1)
+        table.insert(f.displaySlots, 2, f.requiredDisplays[i])
+    end
+    f.requiredDisplay = f.requiredDisplays[1]
     local slotList = object({ActivitySlots = array(f.displaySlots)})
     function f.screen:UpdateCharacterHologram()
         f.holograms = {f.firstDisplay.CharacterVM, f.secondDisplay.CharacterVM}
@@ -212,6 +224,31 @@ test("rerolls update the displayed and pending squad, not just native mission sl
     assert(f.first.AssignedCharacterVM == recruit and f.second.AssignedCharacterVM == f.a)
 end)
 
+test("required and flexible slots can reuse display indices without replacing required operators", function()
+    -- Two required + two flexible reproduces Distress Call. Three required
+    -- catches subtracting the required count instead of the flexible count.
+    for _, requiredCount in ipairs({0, 2, 3}) do
+        local f = fixture(requiredCount)
+        local originals = {}
+        for i, slot in ipairs(f.requiredSlots) do originals[i] = slot.AssignedCharacterVM end
+        local recruit = character(9)
+        table.insert(f.characters, recruit)
+        f.first.AssignedCharacterVM, f.second.AssignedCharacterVM = null, null
+        f.firstDisplay.CharacterVM, f.secondDisplay.CharacterVM = null, null
+        function f.first:DoesCharacterSatisfyRequirement(c) return c.id == 9 end
+        function f.second:DoesCharacterSatisfyRequirement(c) return c.id == 2 end
+        f:run()
+        f:message("Randomized 2 flexible slots; kept " .. requiredCount .. " required slots")
+        assert(f.first.AssignedCharacterVM == recruit and f.second.AssignedCharacterVM == f.a)
+        assert(f.firstDisplay.CharacterVM == recruit and f.secondDisplay.CharacterVM == f.a)
+        assert(f.holograms[1] == recruit and f.holograms[2] == f.a)
+        for i, slot in ipairs(f.requiredSlots) do
+            assert(slot.AssignedCharacterVM == originals[i])
+            assert(f.requiredDisplays[i].CharacterVM == originals[i])
+        end
+    end
+end)
+
 test("inactive screens and individual-slot assignment cannot change the squad", function()
     for _, property in ipairs({"active", "visible", "enabled"}) do
         local f = fixture()
@@ -241,11 +278,13 @@ test("incomplete required slots and unavailable bindings fail before mutation", 
     f:run()
     f:original()
     f:message("no supported binding found")
-    for _, mismatch in ipairs({"Index", "ActivityVM", "isRequired"}) do
-        f = fixture()
+    for _, mismatch in ipairs({"Index", "ActivityVM", "isRequired", "duplicate flexible", "duplicate required"}) do
+        f = fixture(2)
         if mismatch == "Index" then f.firstDisplay.Index = 99 end
         if mismatch == "ActivityVM" then f.firstDisplay.ActivityVM = object() end
         if mismatch == "isRequired" then f.firstDisplay.isRequired = true end
+        if mismatch == "duplicate flexible" then f.firstDisplay.Index = f.secondDisplay.Index end
+        if mismatch == "duplicate required" then f.requiredDisplays[2].Index = f.requiredDisplay.Index end
         f:run()
         f:original()
         assert(f.firstDisplay.CharacterVM == f.a and f.secondDisplay.CharacterVM == f.b)

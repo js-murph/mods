@@ -74,19 +74,21 @@ local function randomize()
     -- The screen keeps pending choices separately and copies them into the
     -- mission on confirmation. Native assignments alone leave those choices stale.
     local slotList = binding(library, screen, "/Game/Game/UI/Strategy/GalaxyMap/BPs/VM_ActivitySlotList.VM_ActivitySlotList_C")
-    local displayByIndex = {}
+    local displayByIndex = {[true] = {}, [false] = {}}
     local displaySlots = arrayValues(slotList.ActivitySlots)
     assert(#displaySlots == #required + #flexible, "Squad display is not ready")
     for _, display in ipairs(displaySlots) do
         assert(valid(display.ActivityVM) and display.ActivityVM:GetAddress() == mission:GetAddress(),
             "Squad display belongs to a different mission")
-        assert(not displayByIndex[display.Index], "Squad display has duplicate slot indices")
-        displayByIndex[display.Index] = display
+        local group = displayByIndex[display.isRequired]
+        assert(not group[display.Index], "Squad display has duplicate slot indices within a slot group")
+        group[display.Index] = display
     end
     local function displayFor(slot, isRequired)
-        local display = requireObject(displayByIndex[slot:GetSlotIndex()], "Squad display slot")
-        assert(display.isRequired == isRequired, "Squad display slot requirement mismatch")
-        return display
+        -- The display numbers each group from zero. Native InitSlots numbers
+        -- flexible slots first, then required slots in the same index space.
+        local index = slot:GetSlotIndex() - (isRequired and #flexible or 0)
+        return requireObject(displayByIndex[isRequired][index], "Squad display slot")
     end
 
     -- Copy IDs, not references to temporary Unreal structs. Never clear or fill
