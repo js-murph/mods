@@ -2,10 +2,12 @@
 custom_script = {}
 
 local owners
+local preference = "tower_damage_meter_labels.txt"
 
-local function remember(_, e)
+local function remember(observer, e)
     if e.tower and not e.tower_holder then
         owners[e.id] = owners[e.id] or {total = 0}
+        if e.tower.type ~= "build_animation" then observer.towers[e.id] = false end
     elseif not (e.enemy or e.hero) then
         local parent = (e.soldier and e.soldier.tower_id) or e.tower_id
             or (e.tower_ref and e.tower_ref.id) or (e.bullet and e.bullet.source_id)
@@ -46,6 +48,11 @@ local function count_hits(health, dt, ts, store)
     end
 end
 
+local function format_damage(total)
+    local digits = tostring(math.floor(total)):reverse():gsub("(%d%d%d)", "%1,")
+    return (digits:reverse():gsub("^,", ""))
+end
+
 local function add_readout(bar)
     local label = GGLabel:new({x = 164, y = 22})
     label.pos = {x = (bar.size.x - label.size.x) / 2, y = -24}
@@ -63,10 +70,65 @@ local function add_readout(bar)
         update_stats(self, e)
         local counter = e.tower and not e.tower_holder and owners[e.id]
         label.hidden = not counter
-        if counter then
-            local digits = tostring(math.floor(counter.total)):reverse():gsub("(%d%d%d)", "%1,")
-            label.text = "Damage dealt: " .. digits:reverse():gsub("^,", "")
+        if counter then label.text = "Damage dealt: " .. format_damage(counter.total) end
+    end
+end
+
+local function add_overlay(gui, store, towers)
+    local layer = KView:new()
+    layer:disable(false) -- decorative: clicks go through to the battlefield
+    gui.window:ci("layer_gui_world"):add_child(layer, 1)
+    function layer:update()
+        if self.hidden then return end
+        for id, label in pairs(towers) do
+            local e = store.entities[id]
+            if not e then
+                if label then self:remove_child(label) end
+                towers[id] = nil
+            else
+                if not label then
+                    label = GGLabel:new({x = 100, y = 24})
+                    label.anchor.x = label.size.x / 2
+                    label.font_name = "fla_h2"
+                    label.font_size = 17
+                    label.text_shadow = true
+                    label.colors.text = {255, 235, 181, 255}
+                    self:add_child(label)
+                    towers[id] = label
+                end
+                label.pos.x, label.pos.y = gui:w2u(e.pos, true)
+                local total = math.floor(owners[id].total)
+                if label.total ~= total then
+                    label.total, label.text = total, format_damage(total)
+                end
+            end
         end
+    end
+
+    local options = gui.window:ci("popup_ingame_options"):ci("group_options_ingame")
+    local template = require("klove.kui_db"):get_table("toggle_checkbox_options", gui.ctx)
+    local toggle = GG5ToggleButton:new_from_table(template)
+    toggle.pos = {x = -183, y = 130}
+    local caption = GGLabel:new({x = 372, y = 52})
+    caption.pos = {x = 46, y = -29}
+    caption.font_name = "fla_h2"
+    caption.font_size = 32
+    caption.text_align = "left"
+    caption.vertical_align = "middle"
+    caption.text = "Damage below towers"
+    caption.colors.text = {255, 235, 181, 255}
+    caption.text_shadow = true
+    caption:disable(false)
+    toggle:add_child(caption)
+    toggle.hit_rect.size.x = 445 -- the caption toggles the checkbox too
+    options:add_child(toggle)
+
+    local enabled = love.filesystem.read(preference) == "on"
+    toggle:set_value(enabled)
+    layer.hidden = not enabled
+    function toggle:on_change(on)
+        layer.hidden = not on
+        love.filesystem.write(preference, on and "on" or "off")
     end
 end
 
@@ -75,7 +137,8 @@ function custom_script:init()
     signal.register("game-start", function(store)
         owners = {}
         local sim = game.simulation
-        table.insert(sim.systems_on_insert, {on_insert = remember})
+        local towers = {}
+        table.insert(sim.systems_on_insert, {on_insert = remember, towers = towers})
         -- The simulation rebuilds its callback lists for every mission/restart.
         for i, system in ipairs(sim.systems_on_update) do
             if system.name == "health" then
@@ -86,6 +149,7 @@ function custom_script:init()
             end
         end
         add_readout(game.game_gui.window:ci("infobar_view"))
+        add_overlay(game.game_gui, store, towers)
     end)
     signal.register("tower-upgraded", function(new, old)
         -- Share the counter: projectiles already in flight still belong to it.
