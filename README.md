@@ -33,6 +33,8 @@ Instructions for installation will be included in the mod Readme.
 
 These mods are maintained on a best effort basis and may be out of date for current versions of games.
 
+- Kingdom Rush 6: Genesis — [Tower Damage Meter](Kingdom%20Rush%20Genesis/TowerDamageMeter/README.md) shows how much damage each placed tower has dealt this mission.
+
 ## License
 
 [MIT with Commons Clause v1.0](LICENSE). Use (including business
