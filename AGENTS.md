@@ -8,7 +8,7 @@ This is a public collection of personal game mods, not a shared application.
   folder names. Source, build files, tests, ignore rules, and documentation belong
   in the mod's folder.
 - Keep the root limited to the README, LICENSE, this guidance, `.agents/skills/`,
-  and game directories. Update the root mod index when adding or removing a mod.
+  and game directories.
 - Do not add a shared build system, CI workflows, release automation, tracked
   release binaries, or Renovate unless explicitly requested.
 - Import source-only snapshots by default. Do not bring in another repository's

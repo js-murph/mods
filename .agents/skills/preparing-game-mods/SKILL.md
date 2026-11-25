@@ -47,8 +47,7 @@ machine-specific histories and detailed implementation/test narration; link to
 existing notes if necessary. Keep warnings that affect safe use, even if they
 make the README longer. A local-only save editor is not a save anonymizer.
 
-Update the root README's mod index. Percent-encode spaces and ampersands in link
-destinations. Preserve the user's existing root README wording and disclaimer.
+Document each mod in `Game Name/ModName/README.md`. Keep the root `README.md` general: do not add game or mod listings there. Percent-encode spaces and ampersands in link destinations.
 
 ## Validate and hand off
 
